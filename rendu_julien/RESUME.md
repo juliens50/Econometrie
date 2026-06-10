@@ -24,18 +24,18 @@ régimes propres plutôt que de mélanger un épisode atypique.
 |---|---|
 | `01-Donnees.R` | Lecture, nettoyage, découpage → 3 CSV (complet, P1, P2) |
 | `02-Visualisation.R` | Graphique des 3 séries en log |
-| `03-tests-unitaires.R` | Racine unitaire ADF + KPSS, par période |
+| `03-tests-unitaires.R` | Moyenne/variance + racine unitaire ADF + KPSS (échantillon complet) |
 | `04-Cointegration.R` | Cointégration Engle-Granger 3 variables (Q1), par période |
 | `05-FR_et_DE.R` | Cointégration bivariée FR-DE (Q2), par période |
 | `06-Dynamique_prix.R` | Modèle à correction d'erreur (Q3), par période |
 
-## Ordre d'intégration (étape 03)
-- **KPSS** rejette la stationnarité pour **les 3 séries, sur les 3 échantillons**
-  → composante non-stationnaire systématique.
-- **ADF** rejette souvent la racine unitaire (surtout l'élec, mais aussi le gaz
-  sur les sous-périodes) : il capte la forte **réversion quotidienne**.
+## Ordre d'intégration (étape 03, échantillon complet)
+- Moyenne et variance par année nettement instables → non-stationnarité.
+- **KPSS** rejette la stationnarité pour **les 3 séries** ; **ADF** rejette la
+  racine unitaire pour l'élec FR/DE (forte **réversion quotidienne** d'un bien
+  non stockable) mais pas pour le gaz.
 - Conflit ADF/KPSS assumé → **toutes les séries traitées I(1)** (KPSS + merit
-  order + co-mouvement). Différences premières stationnaires partout → I(1).
+  order + co-mouvement). Différences premières stationnaires → I(1).
 
 ## Résultats par question et par période
 

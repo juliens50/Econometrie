@@ -1,36 +1,62 @@
-# ============================================================
-# Etape 3 : ordre d'integration (ADF + KPSS), par sous-periode
-# ============================================================
 library(urca)
 
 racine <- "/Users/julien/Documents/IFP/Econometrie/Projet_Econometrie_ENM_2025-2026"
-out    <- file.path(racine, "rendu_julien")
+out <- file.path(racine, "rendu_julien")
 
-periodes <- list(
-  "Complet (2015-2026)" = "donnees_propres.csv",
-  "P1 (2015-2019)"      = "donnees_propres-P1.csv",
-  "P2 (2020.6-2026)"    = "donnees_propres-P2.csv"
-)
+df <- read.csv(file.path(out, "donnees_propres.csv"))
+df$lFR  <- log(df$FR)
+df$lDE  <- log(df$DE)
+df$lGaz <- log(df$Gaz)
 
-# ADF (H0 = racine unitaire) : stationnaire si tau < cv5%
-adf_v <- function(x) {
-  t <- ur.df(x, type = "drift", selectlags = "AIC")
-  ifelse(t@teststat[1] < t@cval[1, "5pct"], "STAT", "I(1)")
-}
-# KPSS (H0 = stationnaire) : non stationnaire si LM > cv5%
-kpss_v <- function(x) {
-  k <- ur.kpss(x, type = "mu")
-  ifelse(k@teststat > k@cval[1, "5pct"], "NON-STAT", "STAT")
+# moyenne et variance non constantes ?
+df$annee <- format(as.Date(df$Date), "%Y")
+
+cat("===== Moyenne et ecart-type par annee (log des prix) =====\n")
+for (v in c("lFR", "lDE", "lGaz")) {
+  m <- tapply(df[[v]], df$annee, mean)   # moyenne par annee
+  s <- tapply(df[[v]], df$annee, sd)     # ecart-type par annee
+  cat("\n---", v, "---\n")
+  print(round(rbind(moyenne = m, ecart_type = s), 2))
 }
 
-for (lab in names(periodes)) {
-  df <- read.csv(file.path(out, periodes[[lab]]))
-  S  <- list(lFR = log(df$FR), lDE = log(df$DE), lGaz = log(df$Gaz))
-  cat("\n================", lab, "(", nrow(df), "obs ) ================\n")
-  cat(sprintf("%-5s | %-11s | %-9s | %-11s\n", "serie", "ADF niveau", "KPSS niv.", "ADF diff."))
-  for (n in names(S)) {
-    cat(sprintf("%-5s | %-11s | %-9s | %-11s\n",
-                n, adf_v(S[[n]]), kpss_v(S[[n]]), adf_v(diff(S[[n]]))))
-  }
+# Tests Unitaires : ADF + KPSS
+series <- list(lFR = df$lFR, lDE = df$lDE, lGaz = df$lGaz)
+
+# --- Helper ADF : H0 = racine unitaire (I(1)) ---
+adf_line <- function(x, type, nom) {
+  t    <- ur.df(x, type = type, selectlags = "AIC")
+  stat <- t@teststat[1]
+  cv5  <- t@cval[1, "5pct"]
+  concl <- ifelse(stat < cv5, "STATIONNAIRE", "racine unitaire (I(1))")
+  sprintf("ADF[%-5s] %-5s : tau = %7.3f | cv5%% = %7.3f -> %s",
+          type, nom, stat, cv5, concl)
 }
-cat("\nLecture : niveau I(1)/NON-STAT + diff STAT => serie I(1).\n")
+
+# --- Helper KPSS : H0 = stationnaire (inverse d'ADF) ---
+kpss_line <- function(x, nom) {
+  k    <- ur.kpss(x, type = "mu")
+  stat <- k@teststat
+  cv5  <- k@cval[1, "5pct"]
+  concl <- ifelse(stat > cv5, "NON stationnaire", "stationnaire")
+  sprintf("KPSS        %-5s : LM  = %7.3f | cv5%% = %7.3f -> %s",
+          nom, stat, cv5, concl)
+}
+
+# ----------------- NIVEAUX -----------------
+cat("\n================ NIVEAUX (log des prix) ================\n")
+for (n in names(series)) {
+  cat(adf_line(series[[n]], "drift", n), "\n")  
+  cat(adf_line(series[[n]], "trend", n), "\n") 
+  cat(kpss_line(series[[n]], n), "\n")
+  cat("--------------------------------------------------------\n")}
+
+
+cat("\n========== DIFFERENCES PREMIERES (variations) ==========\n")
+for (n in names(series)) {
+  dx <- diff(series[[n]])
+  cat(adf_line(dx, "drift", paste0("d.", n)), "\n")
+  cat(kpss_line(dx, paste0("d.", n)), "\n")
+  cat("--------------------------------------------------------\n")
+}
+
+# On valide, toutes nos données sont I(1) condition nécessaire mais pas suffisante pour qu'il y est un équilibre de long terme
