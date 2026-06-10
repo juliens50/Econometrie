@@ -1,27 +1,30 @@
+# ============================================================
+# Etape 5 : couplage FR <-> DE, Engle-Granger bivarie (Q2), par periode
+#   lFR ~ lDE  puis ADF sur residus
+# ============================================================
 library(urca)
 
 racine <- "/Users/julien/Documents/IFP/Econometrie/Projet_Econometrie_ENM_2025-2026"
-out <- file.path(racine, "rendu_julien")
+out    <- file.path(racine, "rendu_julien")
 
-df <- read.csv(file.path(out, "donnees_propres.csv"))
-df$lFR <- log(df$FR)
-df$lDE <- log(df$DE)
+periodes <- list(
+  "Complet (2015-2026)" = "donnees_propres.csv",
+  "P1 (2015-2019)"      = "donnees_propres-P1.csv",
+  "P2 (2020.6-2026)"    = "donnees_propres-P2.csv"
+)
 
-## ---- ETAPE 1 : relation de long terme FR ~ DE ----
-eg2 <- lm(lFR ~ lDE, data = df)
-cat("===== Relation de long terme FR ~ DE =====\n")
-print(round(coef(eg2), 4))
-cat(sprintf("\nlFR = %.3f + %.3f*lDE + residu\n\n", coef(eg2)[1], coef(eg2)[2]))
+cv5 <- -3.34   # valeur critique Engle-Granger, 2 variables, 5%
 
-## ---- ETAPE 2 : ADF sur les residus ----
-res <- residuals(eg2)
-adf_res <- ur.df(res, type = "none", selectlags = "AIC")
-tau <- adf_res@teststat[1]
-cat(sprintf("ADF sur residus : tau = %.3f\n\n", tau))
+for (lab in names(periodes)) {
+  df <- read.csv(file.path(out, periodes[[lab]]))
+  df$lFR <- log(df$FR); df$lDE <- log(df$DE)
 
-# Valeurs critiques Engle-Granger pour 2 variables (avec constante) :
-cv_eg <- c("1%" = -3.90, "5%" = -3.34, "10%" = -3.04)
-cat("Valeurs critiques Engle-Granger (2 var.) :\n"); print(cv_eg)
-concl <- ifelse(tau < cv_eg["5%"], "tau < cv5% -> residus STATIONNAIRES -> COINTEGRATION (marches 
-couples)", "tau > cv5% -> PAS de cointegration")
-cat("\n-> ", concl, "\n")
+  eg  <- lm(lFR ~ lDE, data = df)
+  tau <- ur.df(residuals(eg), type = "none", selectlags = "AIC")@teststat[1]
+  co  <- coef(eg)
+  verdict <- ifelse(tau < cv5, "COINTEGRATION (couples)", "pas de cointegration")
+
+  cat("\n================", lab, "================\n")
+  cat(sprintf("lFR = %.3f + %.3f*lDE   (elasticite FR/DE)\n", co[1], co[2]))
+  cat(sprintf("ADF residus : tau = %.3f (cv5%% = %.2f) -> %s\n", tau, cv5, verdict))
+}

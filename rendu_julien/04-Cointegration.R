@@ -1,35 +1,30 @@
+# ============================================================
+# Etape 4 : cointegration Engle-Granger a 3 variables (Q1), par periode
+#   lFR ~ lGaz + lDE  puis ADF sur residus
+# ============================================================
 library(urca)
 
 racine <- "/Users/julien/Documents/IFP/Econometrie/Projet_Econometrie_ENM_2025-2026"
-out <- file.path(racine, "rendu_julien")
+out    <- file.path(racine, "rendu_julien")
 
-df <- read.csv(file.path(out, "donnees_propres.csv"))
-df$lFR  <- log(df$FR)
-df$lDE  <- log(df$DE)
-df$lGaz <- log(df$Gaz)
+periodes <- list(
+  "Complet (2015-2026)" = "donnees_propres.csv",
+  "P1 (2015-2019)"      = "donnees_propres-P1.csv",
+  "P2 (2020.6-2026)"    = "donnees_propres-P2.csv"
+)
 
-## ---- ETAPE 1 : regression statique de long terme ----
-eg <- lm(lFR ~ lGaz + lDE, data = df)
-cat("===== Relation de long terme estimee (Engle-Granger) =====\n")
-print(round(coef(eg), 4))
-cat(sprintf("\nlFR = %.3f + %.3f*lGaz + %.3f*lDE + residu\n\n",
-            coef(eg)[1], coef(eg)[2], coef(eg)[3]))
+cv5 <- -3.74   # valeur critique Engle-Granger, 3 variables, 5%
 
+for (lab in names(periodes)) {
+  df <- read.csv(file.path(out, periodes[[lab]]))
+  df$lFR <- log(df$FR); df$lDE <- log(df$DE); df$lGaz <- log(df$Gaz)
 
-## ---- ETAPE 2 : ADF sur les residus (l'ecart a l'equilibre) ----
-res <- residuals(eg)
-adf_res <- ur.df(res, type = "none", selectlags = "AIC") 
-tau <- adf_res@teststat[1]
+  eg  <- lm(lFR ~ lGaz + lDE, data = df)
+  tau <- ur.df(residuals(eg), type = "none", selectlags = "AIC")@teststat[1]
+  co  <- coef(eg)
+  verdict <- ifelse(tau < cv5, "COINTEGRATION", "pas de cointegration")
 
-cat("===== Test ADF sur les residus =====\n")
-cat(sprintf("Statistique tau = %.3f\n\n", tau))
-
-# Valeurs critiques d'Engle-Granger (MacKinnon), 3 variables, avec constante :
-cv_eg <- c("1%" = -4.29, "5%" = -3.74, "10%" = -3.45)
-cat("Valeurs critiques Engle-Granger (3 var.) :\n")
-print(cv_eg)
-concl <- ifelse(tau < cv_eg["5%"],
-                "tau < cv5% -> residus STATIONNAIRES -> COINTEGRATION",
-                "tau > cv5% -> residus I(1) -> PAS de cointegration")
-cat("\n-> ", concl, "\n")
-
+  cat("\n================", lab, "================\n")
+  cat(sprintf("lFR = %.3f + %.3f*lGaz + %.3f*lDE\n", co[1], co[2], co[3]))
+  cat(sprintf("ADF residus : tau = %.3f (cv5%% = %.2f) -> %s\n", tau, cv5, verdict))
+}
