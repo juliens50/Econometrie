@@ -60,3 +60,31 @@ for (n in names(series)) {
 }
 
 # On valide, toutes nos données sont I(1) condition nécessaire mais pas suffisante pour qu'il y est un équilibre de long terme
+
+# ============================================================
+# Verification par sous-periode (P1 et P2)
+#   la cointegration par periode suppose I(1) DANS chaque periode
+# ============================================================
+adf_v  <- function(x) {            # STAT si tau < cv5% (H0 = racine unitaire)
+  t <- ur.df(x, type = "drift", selectlags = "AIC")
+  ifelse(t@teststat[1] < t@cval[1, "5pct"], "STAT", "I(1)")
+}
+kpss_v <- function(x) {            # NON-STAT si LM > cv5% (H0 = stationnaire)
+  k <- ur.kpss(x, type = "mu")
+  ifelse(k@teststat > k@cval[1, "5pct"], "NON-STAT", "STAT")
+}
+
+periodes <- list("P1 (2015-2019)" = "donnees_propres-P1.csv",
+                 "P2 (2020.6-2026)" = "donnees_propres-P2.csv")
+
+for (lab in names(periodes)) {
+  d  <- read.csv(file.path(out, periodes[[lab]]))
+  Sp <- list(lFR = log(d$FR), lDE = log(d$DE), lGaz = log(d$Gaz))
+  cat("\n===========", lab, "(", nrow(d), "obs ) ===========\n")
+  cat(sprintf("%-5s | %-9s | %-9s | %-9s\n", "serie", "ADF niv.", "KPSS niv.", "ADF diff."))
+  for (n in names(Sp)) {
+    cat(sprintf("%-5s | %-9s | %-9s | %-9s\n",
+                n, adf_v(Sp[[n]]), kpss_v(Sp[[n]]), adf_v(diff(Sp[[n]]))))
+  }
+}
+cat("\nMeme conflit ADF/KPSS qu'en complet -> series traitees I(1) sur P1 et P2.\n")
