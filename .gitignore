@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Fichiers temporaires Excel (verrou d'ouverture)
+~$*.xlsx
+~$*.xls
+
+# R
+.Rhistory
+.RData
+.Rapp.history
+
+# renv : on versionne renv.lock (pour reproduire), pas la bibliotheque locale
+rendu/renv/library/
+rendu/renv/local/
+rendu/renv/cellar/
+rendu/renv/staging/
