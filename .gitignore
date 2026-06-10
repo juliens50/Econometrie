@@ -15,3 +15,6 @@ rendu/renv/library/
 rendu/renv/local/
 rendu/renv/cellar/
 rendu/renv/staging/
+
+# Dossier de reference, non publie sur GitHub
+rendu/
